@@ -1,0 +1,56 @@
+/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+/***************************************************************************
+ *            configpages.h
+ *
+ *  Wed Sep 8 12:00:00 CEST 2021
+ *  Copyright 2021 Lars Bisballe Jensen
+ *  larsbjensen@gmail.com
+ ****************************************************************************/
+/*
+ *  This file is part of PulseReg2.
+ *
+ *  PulseReg2 is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  PulseReg2 is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with PulseReg2; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA.
+ */
+
+#ifndef LENSREG_CONFIGPAGES_H
+#define LENSREG_CONFIGPAGES_H
+
+#include <QWidget>
+
+class GeneralPage : public QWidget
+{
+  Q_OBJECT
+
+public:
+  GeneralPage(QWidget *parent = 0);
+};
+
+class MatchingPage : public QWidget
+{
+  Q_OBJECT
+
+public:
+  MatchingPage(QWidget *parent = 0);
+};
+
+class OutputPage : public QWidget
+{
+  Q_OBJECT
+
+public:
+  OutputPage(QWidget *parent = 0);
+};
+
+#endif/*__LENSREG_CONFIGPAGES_H__*/
