@@ -45,8 +45,10 @@ GeneralPage::GeneralPage(QWidget *parent) : QWidget(parent)
   CheckBox *alwaysMaximizeCheckBox = new CheckBox(tr("Always maximize window on startup"), "General", "alwaysMaximize", true);
   connect(resetButton, SIGNAL(clicked()), alwaysMaximizeCheckBox, SLOT(resetToDefault()));
 
+  /*
   CheckBox *removeFromListCheckBox = new CheckBox(tr("Remove each item from input list after processing"), "General", "removeFromList", false);
   connect(resetButton, SIGNAL(clicked()), removeFromListCheckBox, SLOT(resetToDefault()));
+  */
 
   QVBoxLayout *layout = new QVBoxLayout();
   layout->addWidget(resetButton);
@@ -60,9 +62,12 @@ MatchingPage::MatchingPage(QWidget *parent) : QWidget(parent)
 {
   QPushButton *resetButton = new QPushButton(tr("Reset all to defaults"));
 
-  CheckBox *checkForTextCheckBox = new CheckBox(tr("Use actual document text if any exists before falling back on OCR"),
-                                                 "Matching", "checkForText", true);
+  CheckBox *checkForTextCheckBox = new CheckBox(tr("Use actual document text if any exists before falling back on OCR"), "Matching", "checkForText", true);
   connect(resetButton, SIGNAL(clicked()), checkForTextCheckBox, SLOT(resetToDefault()));
+
+  QLabel *tesseractLangLabel = new QLabel(tr("Tesseract OCR engine language (ex. 'dan' or 'eng'):"));
+  LineEdit *tesseractLangLineEdit = new LineEdit("Tesseract", "lang", "dan");
+  connect(resetButton, SIGNAL(clicked()), tesseractLangLineEdit, SLOT(resetToDefault()));
 
   QLabel *pdfImageDpiLabel = new QLabel(tr("DPI to use when rendering PDF to image for use with OCR:"));
   LineEdit *pdfImageDpiLineEdit = new LineEdit("Matching", "pdfImageDpi", "300");
@@ -74,6 +79,8 @@ MatchingPage::MatchingPage(QWidget *parent) : QWidget(parent)
 
   QVBoxLayout *layout = new QVBoxLayout();
   layout->addWidget(resetButton);
+  layout->addWidget(tesseractLangLabel);
+  layout->addWidget(tesseractLangLineEdit);
   layout->addWidget(checkForTextCheckBox);
   layout->addWidget(pdfImageDpiLabel);
   layout->addWidget(pdfImageDpiLineEdit);

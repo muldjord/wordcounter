@@ -37,27 +37,47 @@ extern QSettings *settings;
 
 OcrWidget::OcrWidget(QWidget *parent) : QWidget(parent)
 {
-  QFile wordsFile("words.txt");
-  if(wordsFile.open(QIODevice::ReadOnly)) {
-    while(!wordsFile.atEnd()) {
-      searchWords.append(QString(wordsFile.readLine().trimmed()).split(';'));
-    }
-    wordsFile.close();
-  } else {
-    qFatal("Could not open 'words.txt' file for reading!\n");
-  }
   tesser = new tesseract::TessBaseAPI();
+
   ocrTextEdit = new QTextEdit();
+
   resultTable = new QTableWidget();
   resultTable->setColumnCount(2);
   resultTable->setSelectionBehavior(QAbstractItemView::SelectRows);
   resultTable->setHorizontalHeaderLabels(QStringList({tr("Word"), tr("Matches")}));
   resultTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
   connect(resultTable, &QTableWidget::cellClicked, this, &OcrWidget::wordSelected);
-  QHBoxLayout *layout = new QHBoxLayout();
-  layout->addWidget(ocrTextEdit);
-  layout->addWidget(resultTable);
 
+  QFile wordsFile("words.txt");
+  if(wordsFile.open(QIODevice::ReadOnly)) {
+    while(!wordsFile.atEnd()) {
+      QList<QString> searchWord = QString(wordsFile.readLine().trimmed()).split(";");
+      if(searchWord.isEmpty()) {
+	continue;
+      }
+      resultTable->setRowCount(resultTable->rowCount() + 1);
+      QTableWidgetItem *item = new QTableWidgetItem(searchWord.first());
+      item->setData(Qt::UserRole, QVariant(searchWord));
+      resultTable->setItem(resultTable->rowCount() - 1, 0, item);
+    }
+    wordsFile.close();
+  } else {
+    qFatal("Could not open 'words.txt' file for reading!\n");
+  }
+
+  printf("WORD: '%s'\n", resultTable->item(1, 0)->text().toStdString().c_str());
+  
+  progressBar = new QProgressBar(this);
+  progressBar->setMinimum(0);
+
+  QHBoxLayout *hLayout = new QHBoxLayout();
+  hLayout->addWidget(ocrTextEdit);
+  hLayout->addWidget(resultTable);
+
+  QVBoxLayout *layout = new QVBoxLayout();
+  layout->addLayout(hLayout);
+  layout->addWidget(progressBar);
+  
   setLayout(layout);
 }
 
@@ -78,6 +98,9 @@ bool OcrWidget::process(QListWidgetItem *item)
   Poppler::Document *document = Poppler::Document::load(item->data(Qt::UserRole).toString());
 
   // Extract text from all PDF pages either directly or using OCR if no text is found
+  progressBar->setMaximum(document->numPages());
+  progressBar->setFormat(tr("Processing page ") + "%v / " + QString::number(progressBar->maximum()));
+  progressBar->setValue(progressBar->minimum());
   for(int a = 0; a < document->numPages(); ++a) {
     if(settings->value("Matching/checkForText", true).toBool() &&
        !document->page(a)->text(QRectF()).isEmpty()) {
@@ -90,18 +113,19 @@ bool OcrWidget::process(QListWidgetItem *item)
       tesser->SetImage(image.constBits(), image.width(), image.height(), 4, 4 * image.width());
       ocrText.append(tesser->GetUTF8Text());
     }
+    progressBar->setValue(progressBar->value() + 1);
   }
+  progressBar->setValue(progressBar->maximum());
   delete document;
 
   // Segment ocrText and add them to list
   QString chars = "";
   pdfWords.clear();
   bool inWord = ocrText.isEmpty()?false:ocrText.at(0).isLetterOrNumber();
-  ocrText = ocrText.toHtmlEscaped();
   for(const auto &currentChar: ocrText) {
     if(currentChar.isLetterOrNumber() == !inWord) {
       pdfWords.append(CharData(inWord, chars));
-      printf("FOUND: '%s', %d\n", chars.toStdString().c_str(), inWord);
+      printf("PDFWORD: '%s', %d\n", chars.toStdString().c_str(), inWord);
       chars.clear();
       inWord = !inWord;
     }
@@ -112,10 +136,11 @@ bool OcrWidget::process(QListWidgetItem *item)
       continue;
     }
     bool found = false;
-    for(const auto &searchWord: searchWords) {
-      for(const auto &variation: searchWord) {
-	if(wordDifference(word.getChars(), variation) >= settings->value("Matching/minMatchPercentage", "80").toInt()) {
-	  word.setMatch(searchWord.first());
+    for(int a = 0; a < resultTable->rowCount(); ++a) {
+      for(const auto &variation: resultTable->item(a, 0)->data(Qt::UserRole).toList()) {
+	if(wordDifference(word.getChars().toLower(), variation.toString().toLower()) >= settings->value("Matching/minMatchPercentage", "80").toInt()) {
+	  word.setMatch(resultTable->item(a, 0)->data(Qt::UserRole).toList().first().toString());
+	  printf("WORD: '%s'\n", resultTable->item(a, 0)->data(Qt::UserRole).toList().first().toString().toStdString().c_str());
 	  found = true;
 	  break;
 	}
@@ -126,17 +151,14 @@ bool OcrWidget::process(QListWidgetItem *item)
     }
   }
 
-  resultTable->setRowCount(searchWords.count());
-  for(int a = 0; a < searchWords.count(); ++a) {
-    QTableWidgetItem *searchWordItem = new QTableWidgetItem(searchWords.at(a).first());
+  for(int a = 0; a < resultTable->rowCount(); ++a) {
     int numMatches = 0;
     for(const auto &word: pdfWords) {
-      if(word.getMatch() == searchWords.at(a).first()) {
+      if(word.getMatch() == resultTable->item(a, 0)->data(Qt::UserRole).toList().first().toString()) {
 	numMatches++;
       }
     }
     QTableWidgetItem *numMatchesItem = new QTableWidgetItem(QString::number(numMatches));
-    resultTable->setItem(a, 0, searchWordItem);
     resultTable->setItem(a, 1, numMatchesItem);
   }
 
@@ -168,11 +190,9 @@ int OcrWidget::wordDifference(const QString &s1, const QString &s2)
 
   int percentage = 0;
   if(s1.length() > s2.length()) {
-    percentage = (int)(100.0 / (double)s1.length() *
-			((double)s1.length() - (double)distance));
+    percentage = (int)(100.0 / (double)s1.length() * ((double)s1.length() - (double)distance));
   } else {
-    percentage = (int)(100.0 / (double)s2.length() *
-			((double)s2.length() - (double)distance));
+    percentage = (int)(100.0 / (double)s2.length() * ((double)s2.length() - (double)distance));
   }
 
   return percentage;
@@ -180,7 +200,7 @@ int OcrWidget::wordDifference(const QString &s1, const QString &s2)
 
 void OcrWidget::wordSelected(int row, int column)
 {
-  redrawText(searchWords.at(row).first());
+  redrawText(resultTable->item(row, 0)->data(Qt::UserRole).toList().first().toString());
 }
 
 void OcrWidget::redrawText(const QString &mark)
@@ -190,7 +210,7 @@ void OcrWidget::redrawText(const QString &mark)
     if(!mark.isEmpty() && word.getMatch() == mark) {
       combined.append("<span style=\"color:blue\">");
     }
-    combined.append(word.getChars());
+    combined.append(word.getChars().toHtmlEscaped());
     if(!mark.isEmpty() && word.getMatch() == mark) {
       combined.append("</span>");
     }

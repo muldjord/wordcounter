@@ -35,6 +35,7 @@ Q_OBJECT
 
 public:
   CharData(const CharData &data);
+  void operator=(const CharData &data);
   CharData(const bool &isWord,
            const QString &chars);
   bool isWord() const;

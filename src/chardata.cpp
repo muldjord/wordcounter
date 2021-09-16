@@ -32,6 +32,13 @@ CharData::CharData(const CharData &data) : QObject()
   match = data.match;
 }
 
+void CharData::operator=(const CharData &data)
+{
+  word = data.word;
+  chars = data.chars;
+  match = data.match;
+}
+
 CharData::CharData(const bool &word, const QString &chars) :
   word(word), chars(chars)
 {

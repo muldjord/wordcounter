@@ -29,11 +29,11 @@
 #include <QWidget>
 #include <QList>
 #include <QLabel>
-#include <QStatusBar>
 #include <QListWidgetItem>
 #include <QTextEdit>
 #include <QTableWidget>
 #include <tesseract/baseapi.h>
+#include <QProgressBar>
 
 #include "chardata.h"
 
@@ -53,7 +53,7 @@ private:
   int wordDifference(const QString &s1, const QString &s2);
   void redrawText(const QString &mark = QString());
   
-  QList<QList<QString> > searchWords;
+  QProgressBar *progressBar;
   QList<CharData> pdfWords;
   tesseract::TessBaseAPI *tesser;
   QTextEdit *ocrTextEdit;
