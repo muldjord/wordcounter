@@ -32,12 +32,14 @@
 #include <poppler-qt5.h>
 
 #include "ocrwidget.h"
+#include "ocrworker.h"
 
 extern QSettings *settings;
 
 OcrWidget::OcrWidget(QWidget *parent) : QWidget(parent)
 {
-  tesser = new tesseract::TessBaseAPI();
+  // Create shared queue with files to process
+  queue = QSharedPointer<Queue>(new Queue());
 
   ocrTextEdit = new QTextEdit();
 
@@ -83,16 +85,12 @@ OcrWidget::OcrWidget(QWidget *parent) : QWidget(parent)
 
 OcrWidget::~OcrWidget()
 {
-  delete tesser;
 }
 
 bool OcrWidget::process(QListWidgetItem *item)
 {
-  if(tesser->Init(nullptr,
-		  settings->value("Tesseract/lang", "eng").toString().toStdString().c_str())) {
-    qFatal("Could not initialize tesseract engine!\n");
-    return false;
-  }
+  doneThreads = 0;
+  ocrText = "";
 
   QString ocrText = "";
   Poppler::Document *document = Poppler::Document::load(item->data(Qt::UserRole).toString());
@@ -106,18 +104,44 @@ bool OcrWidget::process(QListWidgetItem *item)
        !document->page(a)->text(QRectF()).isEmpty()) {
       ocrText.append(document->page(a)->text(QRectF()));
     } else {
-      QImage image =
-	document->page(a)->renderToImage(settings->value("Matching/pdfImageDpi", "300").toInt()
-					 , settings->value("Matching/pdfImageDpi", "300").toInt()
-					 ).convertToFormat(QImage::Format_RGB32);
-      tesser->SetImage(image.constBits(), image.width(), image.height(), 4, 4 * image.width());
-      ocrText.append(tesser->GetUTF8Text());
+      queue->append(QPair<QImage, int> (document->page(a)->renderToImage(settings->value("Matching/pdfImageDpi", "300").toInt(), settings->value("Matching/pdfImageDpi", "300").toInt()).convertToFormat(QImage::Format_RGB32), a));
     }
-    progressBar->setValue(progressBar->value() + 1);
   }
-  progressBar->setValue(progressBar->maximum());
-  delete document;
+  //progressBar->setValue(progressBar->maximum());
 
+  // Create and run threads
+  QList<QThread*> threadList;
+  for(int curThread = 1; curThread <= 12; ++curThread) {
+    QThread *thread = new QThread;
+    OcrWorker *worker = new OcrWorker(queue);
+    worker->moveToThread(thread);
+    connect(thread, &QThread::started, worker, &OcrWorker::run);
+    connect(worker, &OcrWorker::entryReady, this, &OcrWidget::entryReady);
+    connect(worker, &OcrWorker::allDone, this, &OcrWidget::checkThreads);
+    connect(thread, &QThread::finished, worker, &OcrWorker::deleteLater);
+    threadList.append(thread);
+    // Do not start more threads if we have less pages than allowed threads
+    if(curThread == document->numPages()) {
+      threads = document->numPages();
+      break;
+    }
+  }
+  delete document;
+  // Ready, set, GO! Start all threads
+  for(const auto thread: threadList) {
+    thread->start();
+  }
+}
+
+void OcrWidget::checkThreads()
+{
+  QMutexLocker locker(&checkThreadMutex);
+
+  doneThreads++;
+  if(doneThreads != threads)
+    return;
+
+  printf("ALL DONE!\n");
   // Segment ocrText and add them to list
   QString chars = "";
   pdfWords.clear();
@@ -163,8 +187,6 @@ bool OcrWidget::process(QListWidgetItem *item)
   }
 
   redrawText();
-  
-  return true;
 }
 
 int OcrWidget::wordDifference(const QString &s1, const QString &s2) 
@@ -208,7 +230,7 @@ void OcrWidget::redrawText(const QString &mark)
   QString combined = "";
   for(const auto &word: pdfWords) {
     if(!mark.isEmpty() && word.getMatch() == mark) {
-      combined.append("<span style=\"color:blue\">");
+      combined.append("<span style=\"color:#" + settings->value("Matching/matchedWordColor", "ff0000").toString() + "\">");
     }
     combined.append(word.getChars().toHtmlEscaped());
     if(!mark.isEmpty() && word.getMatch() == mark) {
@@ -216,4 +238,11 @@ void OcrWidget::redrawText(const QString &mark)
     }
   }
   ocrTextEdit->setHtml(combined);
+}
+
+void OcrWidget::entryReady(const QString &pageText, const int &pageNum)
+{
+  QMutexLocker locker(&entryMutex);
+  progressBar->setValue(progressBar->value() + 1);
+  ocrText.append(pageText);
 }

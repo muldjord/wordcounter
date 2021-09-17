@@ -1,5 +1,5 @@
 /***************************************************************************
- *            ocrwidget.h
+ *            queue.cpp
  *
  *  Wed Sep 8 12:00:00 CEST 2021
  *  Copyright 2021 Lars Bisballe Jensen
@@ -23,49 +23,33 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA.
  */
 
-#ifndef OCRWIDGET_H
-#define OCRWIDGET_H
-
-#include <QWidget>
-#include <QList>
-#include <QLabel>
-#include <QListWidgetItem>
-#include <QTextEdit>
-#include <QTableWidget>
-#include <QProgressBar>
-#include <QMutex>
-
-#include "chardata.h"
 #include "queue.h"
 
-class OcrWidget : public QWidget
+Queue::Queue()
 {
-  Q_OBJECT
-    
-public:
-  OcrWidget(QWidget *parent);
-  ~OcrWidget();
-  bool process(QListWidgetItem *item);
-  QSharedPointer<Queue> queue;
-  
-private slots:
-  void wordSelected(int row, int column);
-  void entryReady(const QString &pageText, const int &pageNum);
-  void checkThreads();
+}
 
-private:
-  int wordDifference(const QString &s1, const QString &s2);
-  void redrawText(const QString &mark = QString());
-  
-  QMutex entryMutex;
-  QMutex checkThreadMutex;
-  int threads = 6;
-  int doneThreads = 0;
-  QString ocrText = "";
-  QProgressBar *progressBar;
-  QList<CharData> pdfWords;
-  QTextEdit *ocrTextEdit;
-  QTableWidget *resultTable;
-};
+bool Queue::hasEntry()
+{
+  queueMutex.lock();
+  if(isEmpty()) {
+    queueMutex.unlock();
+    return false;
+  }
+  return true;
+}
 
-#endif
+QPair<QImage, int> Queue::takeEntry()
+{
+  QPair<QImage, int> page = first();
+  removeFirst();
+  queueMutex.unlock();
+  return page;
+}
+
+void Queue::clearAll()
+{
+  queueMutex.lock();
+  clear();
+  queueMutex.unlock();
+}

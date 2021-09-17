@@ -18,6 +18,8 @@ DEFINES+=VERSION=\\\"$$VERSION\\\"
 HEADERS += src/mainwindow.h \
            src/datawidget.h \
            src/ocrwidget.h \
+           src/ocrworker.h \
+           src/queue.h \
            src/chardata.h \
            src/lineedit.h \
            src/combobox.h \
@@ -30,6 +32,8 @@ SOURCES += src/main.cpp \
            src/mainwindow.cpp \
            src/datawidget.cpp \
            src/ocrwidget.cpp \
+           src/ocrworker.cpp \
+           src/queue.cpp \
            src/chardata.cpp \
            src/lineedit.cpp \
            src/combobox.cpp \

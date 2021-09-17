@@ -1,5 +1,5 @@
 /***************************************************************************
- *            ocrwidget.h
+ *            ocrworker.cpp
  *
  *  Wed Sep 8 12:00:00 CEST 2021
  *  Copyright 2021 Lars Bisballe Jensen
@@ -23,49 +23,38 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA.
  */
 
-#ifndef OCRWIDGET_H
-#define OCRWIDGET_H
+#define DEBUG
 
-#include <QWidget>
-#include <QList>
-#include <QLabel>
-#include <QListWidgetItem>
-#include <QTextEdit>
-#include <QTableWidget>
-#include <QProgressBar>
-#include <QMutex>
+#include <stdio.h>
+#include <QtWidgets>
+#include <QSettings>
+#include <poppler-qt5.h>
 
-#include "chardata.h"
-#include "queue.h"
+#include "ocrworker.h"
 
-class OcrWidget : public QWidget
+OcrWorker::OcrWorker(QSharedPointer<Queue> queue) : queue(queue)
 {
-  Q_OBJECT
-    
-public:
-  OcrWidget(QWidget *parent);
-  ~OcrWidget();
-  bool process(QListWidgetItem *item);
-  QSharedPointer<Queue> queue;
-  
-private slots:
-  void wordSelected(int row, int column);
-  void entryReady(const QString &pageText, const int &pageNum);
-  void checkThreads();
+  settings = new QSettings("config.ini", QSettings::IniFormat);
 
-private:
-  int wordDifference(const QString &s1, const QString &s2);
-  void redrawText(const QString &mark = QString());
-  
-  QMutex entryMutex;
-  QMutex checkThreadMutex;
-  int threads = 6;
-  int doneThreads = 0;
-  QString ocrText = "";
-  QProgressBar *progressBar;
-  QList<CharData> pdfWords;
-  QTextEdit *ocrTextEdit;
-  QTableWidget *resultTable;
-};
+  tesser = new tesseract::TessBaseAPI();
+  if(tesser->Init(nullptr,
+		  settings->value("Tesseract/lang", "dan").toString().toStdString().c_str())) {
+    qFatal("Could not initialize tesseract engine!\n");
+    exit(1);
+  }
+}
 
-#endif
+OcrWorker::~OcrWorker()
+{
+  delete settings;
+}
+
+void OcrWorker::run()
+{
+  while(queue->hasEntry()) {
+    QPair<QImage, int> page = queue->takeEntry();
+    tesser->SetImage(page.first.constBits(), page.first.width(), page.first.height(), 4, 4 * page.first.width());
+    emit entryReady(tesser->GetUTF8Text(), page.second);
+  }
+  emit allDone();
+}

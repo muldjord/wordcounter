@@ -77,6 +77,10 @@ MatchingPage::MatchingPage(QWidget *parent) : QWidget(parent)
   LineEdit *minMatchPercentageLineEdit = new LineEdit("Matching", "minMatchPercentage", "80");
   connect(resetButton, SIGNAL(clicked()), minMatchPercentageLineEdit, SLOT(resetToDefault()));
 
+  QLabel *matchColorLabel = new QLabel(tr("Matched word color in hex (eg. 'ff0000'):"));
+  LineEdit *matchColorLineEdit = new LineEdit("Matching", "matchedWordColor", "ff0000");
+  connect(resetButton, SIGNAL(clicked()), matchColorLineEdit, SLOT(resetToDefault()));
+
   QVBoxLayout *layout = new QVBoxLayout();
   layout->addWidget(resetButton);
   layout->addWidget(tesseractLangLabel);
@@ -86,6 +90,8 @@ MatchingPage::MatchingPage(QWidget *parent) : QWidget(parent)
   layout->addWidget(pdfImageDpiLineEdit);
   layout->addWidget(minMatchPercentageLabel);
   layout->addWidget(minMatchPercentageLineEdit);
+  layout->addWidget(matchColorLabel);
+  layout->addWidget(matchColorLineEdit);
   layout->addStretch();
   setLayout(layout);
 }
