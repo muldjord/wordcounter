@@ -54,12 +54,14 @@ OcrWidget::OcrWidget(QWidget *parent) : QWidget(parent)
   QFile wordsFile("words.txt");
   if(wordsFile.open(QIODevice::ReadOnly)) {
     while(!wordsFile.atEnd()) {
-      QList<QString> searchWord = QString(wordsFile.readLine().trimmed()).split(";");
+      QString wordLine = QString(wordsFile.readLine().trimmed());
+      QList<QString> searchWord = wordLine.split(";");
       if(searchWord.isEmpty()) {
 	continue;
       }
       resultTable->setRowCount(resultTable->rowCount() + 1);
       QTableWidgetItem *item = new QTableWidgetItem(searchWord.first());
+      item->setData(Qt::ToolTipRole, wordLine.replace(";", "\n"));
       item->setData(Qt::UserRole, QVariant(searchWord));
       resultTable->setItem(resultTable->rowCount() - 1, 0, item);
     }
