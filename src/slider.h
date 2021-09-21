@@ -1,5 +1,5 @@
 /***************************************************************************
- *            lineedit.cpp
+ *            slider.h
  *
  *  Wed Sep 8 12:00:00 CEST 2021
  *  Copyright 2021 Lars Bisballe Jensen
@@ -23,44 +23,35 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA.
  */
 
-#define DEBUG
+#ifndef SLIDER_H
+#define SLIDER_H
 
-#include <stdio.h>
-#include <QSettings>
+#include <QSlider>
+#include <QLineEdit>
 
-#include "lineedit.h"
-
-extern QSettings *settings;
-
-LineEdit::LineEdit(QString group, QString name, QString stdValue, const bool &text)
-  : group(group), defaultValue(stdValue), isText(text)
+class Slider : public QWidget
 {
-  this->name = (group != "General"?group + "/":"") + name;
+  Q_OBJECT
+    
+public:
+  Slider(const QString &group, const QString &name, const int &stdValue, const int &maxValue, const int &minValue = 0);
+  ~Slider();
+  
+public slots:
+  void resetToDefault();
 
-  if(!settings->contains(name)) {
-    settings->setValue(name, stdValue);
-  }
-  setText(settings->value(this->name, stdValue).toString());
+protected:
+  
+private slots:
+  void saveToConfig();
+  void setValueText(int value);
 
-  connect(this, &QLineEdit::editingFinished, this, &LineEdit::saveToConfig);
-  connect(this, &QLineEdit::textChanged, this, &LineEdit::saveToConfig);
-}
+private:
+  QSlider *slider;
+  QLineEdit *valueText;
+  QString name;
+  QString group;
+  int defaultValue;
+};
 
-LineEdit::~LineEdit()
-{
-}
-
-void LineEdit::resetToDefault()
-{
-  setText(defaultValue);
-}
-
-void LineEdit::saveToConfig()
-{
-  if(!isText && text().contains(",")) {
-    setText(text().replace(",", "."));
-  }
-  settings->setValue(name, this->text());
-
-  qDebug("Key '%s' saved to config with value '%s'\n", name.toStdString().c_str(), this->text().toStdString().c_str());
-}
+#endif

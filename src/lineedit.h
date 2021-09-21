@@ -45,10 +45,10 @@ private slots:
   void saveToConfig();
 
 private:
-  bool isText;
   QString name;
   QString group;
   QString defaultValue;
+  bool isText;
 };
 
 #endif

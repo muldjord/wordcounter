@@ -47,6 +47,7 @@ OcrWorker::OcrWorker(QSharedPointer<Queue> queue) : queue(queue)
 OcrWorker::~OcrWorker()
 {
   delete settings;
+  delete tesser;
 }
 
 void OcrWorker::run()
@@ -54,7 +55,11 @@ void OcrWorker::run()
   while(queue->hasEntry()) {
     QPair<QImage, int> page = queue->takeEntry();
     tesser->SetImage(page.first.constBits(), page.first.width(), page.first.height(), 4, 4 * page.first.width());
-    emit entryReady(tesser->GetUTF8Text(), page.second);
+    QString finalText = QString::fromUtf8(tesser->GetUTF8Text()).trimmed();
+    if(finalText.right(1) == "-") {
+      finalText = finalText.left(finalText.length() - 1);
+    }
+    emit entryReady(finalText, page.second);
   }
   emit allDone();
 }

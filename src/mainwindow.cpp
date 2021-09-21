@@ -133,7 +133,6 @@ void MainWindow::chooseFolder()
   QString folder = QFileDialog::getExistingDirectory(this, tr("Choose folder"), ".");
 
   if(folder != "") {
-    QDir::setCurrent(folder);
     addFromFolder(folder);
   }
 }

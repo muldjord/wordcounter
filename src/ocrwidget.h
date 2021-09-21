@@ -34,6 +34,7 @@
 #include <QTableWidget>
 #include <QProgressBar>
 #include <QMutex>
+#include <QFileInfo>
 
 #include "chardata.h"
 #include "queue.h"
@@ -45,27 +46,31 @@ class OcrWidget : public QWidget
 public:
   OcrWidget(QWidget *parent);
   ~OcrWidget();
-  bool process(QListWidgetItem *item);
+  void process(QListWidgetItem *item);
   QSharedPointer<Queue> queue;
   
 private slots:
-  void wordSelected(int row, int column);
+  void wordSelected(int row, int);
   void entryReady(const QString &pageText, const int &pageNum);
   void checkThreads();
 
+signals:
+  void allDone();
+
 private:
   int wordDifference(const QString &s1, const QString &s2);
-  void redrawText(const QString &mark = QString());
+  QString redrawText(const QString &mark = QString());
   
   QMutex entryMutex;
   QMutex checkThreadMutex;
   int threads = 6;
   int doneThreads = 0;
-  QString ocrText = "";
+  QList<QPair<QString, int> > ocrTexts;;
   QProgressBar *progressBar;
   QList<CharData> pdfWords;
   QTextEdit *ocrTextEdit;
   QTableWidget *resultTable;
+  QFileInfo currentFileInfo = QFileInfo();
 };
 
 #endif

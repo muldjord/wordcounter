@@ -24,6 +24,7 @@ HEADERS += src/mainwindow.h \
            src/lineedit.h \
            src/combobox.h \
            src/checkbox.h \
+           src/slider.h \
            src/configpages.h \
            src/configdialog.h \
            src/aboutbox.h
@@ -38,6 +39,7 @@ SOURCES += src/main.cpp \
            src/lineedit.cpp \
            src/combobox.cpp \
            src/checkbox.cpp \
+           src/slider.cpp \
            src/configpages.cpp \
            src/configdialog.cpp \
            src/aboutbox.cpp

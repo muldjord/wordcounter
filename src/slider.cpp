@@ -1,5 +1,5 @@
 /***************************************************************************
- *            lineedit.cpp
+ *            slider.cpp
  *
  *  Wed Sep 8 12:00:00 CEST 2021
  *  Copyright 2021 Lars Bisballe Jensen
@@ -27,40 +27,57 @@
 
 #include <stdio.h>
 #include <QSettings>
+#include <QHBoxLayout>
 
-#include "lineedit.h"
+#include "slider.h"
 
 extern QSettings *settings;
 
-LineEdit::LineEdit(QString group, QString name, QString stdValue, const bool &text)
-  : group(group), defaultValue(stdValue), isText(text)
+Slider::Slider(const QString &group, const QString &name, const int &stdValue,
+	       const int &maxValue, const int &minValue)
+  : group(group), defaultValue(stdValue)
 {
   this->name = (group != "General"?group + "/":"") + name;
 
   if(!settings->contains(name)) {
     settings->setValue(name, stdValue);
   }
-  setText(settings->value(this->name, stdValue).toString());
 
-  connect(this, &QLineEdit::editingFinished, this, &LineEdit::saveToConfig);
-  connect(this, &QLineEdit::textChanged, this, &LineEdit::saveToConfig);
+  slider = new QSlider(this);
+  slider->setOrientation(Qt::Horizontal);
+  slider->setMinimum(minValue);
+  slider->setMaximum(maxValue);
+  slider->setValue(settings->value(this->name, stdValue).toInt());
+  connect(slider, &QSlider::sliderReleased, this, &Slider::saveToConfig);
+  connect(slider, &QSlider::valueChanged, this, &Slider::setValueText);
+
+  valueText = new QLineEdit(this);
+  valueText->setMaximumWidth(25);
+  valueText->setText(QString::number(slider->value()));
+  
+  QHBoxLayout *layout = new QHBoxLayout();
+  layout->addWidget(valueText);
+  layout->addWidget(slider);
+  
+  setLayout(layout);
 }
 
-LineEdit::~LineEdit()
+Slider::~Slider()
 {
 }
 
-void LineEdit::resetToDefault()
+void Slider::resetToDefault()
 {
-  setText(defaultValue);
+  slider->setValue(defaultValue);
 }
 
-void LineEdit::saveToConfig()
+void Slider::saveToConfig()
 {
-  if(!isText && text().contains(",")) {
-    setText(text().replace(",", "."));
-  }
-  settings->setValue(name, this->text());
+  settings->setValue(name, slider->value());
+  qDebug("Key '%s' saved to config with value '%d'\n", name.toStdString().c_str(), slider->value());
+}
 
-  qDebug("Key '%s' saved to config with value '%s'\n", name.toStdString().c_str(), this->text().toStdString().c_str());
+void Slider::setValueText(int value)
+{
+  valueText->setText(QString::number(value));
 }
